@@ -1,0 +1,86 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+// Here you can set a link to a zip file containing your app sources.
+// If you want your app to be available offline. (SOURCE MUST BE A ZIP FILE WITH ALL FILES IN ROOT)
+tasks.register('downloadWebSources') {
+    def src = ''
+    doLast {
+        if (!src || src.trim().isEmpty()) {
+            println "Source URL is empty, skipping download..."
+            return
+        }
+        
+        def destdir = '.'
+        def destfile = "$destdir/package.zip"
+        def f = new File(destfile)
+        f.getParentFile()?.mkdirs()
+        if (f.exists()) {
+            f.delete()
+        }
+        println "Downloading $destfile from $src..."
+        def url = new URL(src)
+        url.withInputStream { i -> f.withOutputStream { it << i } };
+        copy {
+            def outputDir = "./src/main/assets"
+            def packagePath = "../package.zip"
+            delete(outputDir)
+            mkdir(outputDir)
+            from zipTree(packagePath)
+            into outputDir
+        }
+        f.delete()
+    }
+}
+
+android {
+    namespace 'com.waitberry.webexample'
+    //noinspection GradleDependency
+    compileSdkVersion 18
+
+    tasks.withType(JavaCompile).configureEach {
+        compileTask -> compileTask.dependsOn downloadWebSources
+    }
+
+    defaultConfig {
+        applicationId "com.waitberry.webexample"
+        minSdkVersion 18
+        multiDexEnabled false
+        //noinspection ExpiredTargetSdkVersion
+        targetSdkVersion 18
+        versionCode 100
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        debug {
+            ndk {
+                //noinspection ChromeOsAbiSupport
+                abiFilters "armeabi-v7a", "x86"
+            }
+        }
+        release {
+            minifyEnabled false
+            proguardFiles 'proguard-rules.pro'
+            ndk {
+                //noinspection ChromeOsAbiSupport
+                abiFilters "armeabi-v7a"
+            }
+        }
+    }
+
+    productFlavors {
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation project(':crosswalk')
+}
